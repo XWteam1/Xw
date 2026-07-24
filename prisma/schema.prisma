@@ -1,6 +1,6 @@
 // XW Social System — Prisma schema
-// Phase 1: auth (email + admin approval), roles, blogs.
-// Channel kits / assets / posts / schedule / reviews land in later phases.
+// Phase 1: auth, roles, blogs. Phase 2: channel kits + assets (this file).
+// Posts / schedule / reviews land in later phases.
 
 generator client {
   provider = "prisma-client"
@@ -65,4 +65,69 @@ model Blog {
 
   uploadedBy   User   @relation(fields: [uploadedById], references: [id])
   uploadedById String
+
+  kits ChannelKit[]
+}
+
+// Kit status is one of: "DRAFT" | "IN_REVIEW" | "APPROVED" | "CHANGES_REQUESTED"
+// (String, not enum — same reasoning as User.role/status above.)
+// The kit's actual plan/copy lives in a Google Doc (docUrl), same pattern as
+// Blog — this table just tracks who's posting what, where, and its status.
+model ChannelKit {
+  id     String  @id @default(cuid())
+  title  String
+  docUrl String?
+  status String  @default("DRAFT")
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  submittedAt DateTime?
+  decidedAt   DateTime?
+
+  blog   Blog   @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  blogId String
+
+  assets Asset[]
+}
+
+// One planned post: who's posting (owner), where (platform), what kind
+// (format). The actual copy lives in the kit's Google Doc — this is just
+// enough structure to attach a finished Post to.
+// owner: one of Murad | Anas | Almas | XW (see src/lib/owners.ts)
+// platform: Instagram | LinkedIn | YouTube
+// format: depends on platform — see src/lib/owners.ts FORMATS_BY_PLATFORM
+// status mirrors ChannelKit.status — reviewed per-asset in Phase 3.
+model Asset {
+  id       String @id @default(cuid())
+  owner    String
+  platform String
+  format   String
+  status   String @default("DRAFT")
+  order    Int    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  kit   ChannelKit @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  kitId String
+
+  post Post?
+}
+
+// Finished creative for one asset (spec: "an asset has zero or one post").
+// files is a JSON-encoded array of {url, type, name}, uploaded to Vercel
+// Blob — supports multiple images (carousels), video, or PDF per post.
+// status mirrors ChannelKit/Asset status.
+model Post {
+  id            String    @id @default(cuid())
+  files         String?
+  finalCopy     String?
+  scheduledDate DateTime?
+  status        String    @default("DRAFT")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  assetId String @unique
 }

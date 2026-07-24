@@ -30,3 +30,13 @@ export async function createBlog(formData: FormData) {
   revalidatePath("/blogs");
   redirect(`/blogs/${blog.id}`);
 }
+
+export async function deleteBlog(formData: FormData) {
+  await requireUser();
+  const blogId = String(formData.get("blogId") || "");
+  if (!blogId) throw new Error("Missing blog id.");
+
+  await prisma.blog.delete({ where: { id: blogId } });
+
+  revalidatePath("/blogs");
+}

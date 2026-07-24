@@ -7,6 +7,7 @@ const ICONS = {
   dashboard:
     "M3 3h8v8H3zM13 3h8v5h-8zM13 12h8v9h-8zM3 14h8v7H3z",
   blog: "M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z M14 3v5h5 M8 13h8M8 17h5",
+  kit: "M3 3h18v18H3z M3 9h18 M9 21V9",
   users:
     "M9 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM2.5 20c1-3.5 3.5-5.5 6.5-5.5s5.5 2 6.5 5.5M17.5 9a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2ZM15.5 14.5c2.6.3 4.4 2 5 5.5",
 };
@@ -65,6 +66,9 @@ export default async function AppLayout({
           </NavLink>
           <NavLink href="/blogs" icon={<Icon path={ICONS.blog} />}>
             Blogs
+          </NavLink>
+          <NavLink href="/kits" icon={<Icon path={ICONS.kit} />}>
+            Channel Kits
           </NavLink>
           {user.role === "ADMIN" && (
             <NavLink href="/admin/access-requests" icon={<Icon path={ICONS.users} />}>
