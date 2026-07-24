@@ -23,7 +23,11 @@ export async function approveUser(formData: FormData) {
     },
   });
 
-  await approvedEmail({ to: user.email, loginUrl: `${baseUrl()}/login` });
+  try {
+    await approvedEmail({ to: user.email, loginUrl: `${baseUrl()}/login` });
+  } catch (err) {
+    console.error("[approveUser] notification email failed:", err);
+  }
   revalidatePath("/admin/access-requests");
 }
 

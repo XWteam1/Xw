@@ -45,11 +45,15 @@ export async function requestAccess(
     await prisma.user.create({ data: { email, status: "PENDING" } });
     const adminEmail = process.env.ADMIN_EMAIL;
     if (adminEmail) {
-      await accessRequestAdminEmail({
-        adminEmail,
-        requesterEmail: email,
-        approveUrl: `${baseUrl()}/admin/access-requests`,
-      });
+      try {
+        await accessRequestAdminEmail({
+          adminEmail,
+          requesterEmail: email,
+          approveUrl: `${baseUrl()}/admin/access-requests`,
+        });
+      } catch (err) {
+        console.error("[requestAccess] admin notification failed:", err);
+      }
     }
     return {
       status: "pending",
@@ -72,7 +76,17 @@ export async function requestAccess(
     };
   }
 
-  await issueMagicLink(email);
+  try {
+    await issueMagicLink(email);
+  } catch (err) {
+    console.error("[requestAccess] magic link email failed:", err);
+    return {
+      status: "error",
+      message:
+        "Couldn't send the sign-in email — the sending domain likely isn't verified yet in Resend. Contact the admin.",
+    };
+  }
+
   return {
     status: "sent",
     message: `Check ${email} for a sign-in link — it expires in 15 minutes.`,
