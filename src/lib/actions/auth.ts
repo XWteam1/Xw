@@ -1,11 +1,11 @@
 "use server";
 
-import crypto from "node:crypto";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { clearSessionCookie } from "@/lib/session";
 import { magicLinkEmail, accessRequestAdminEmail } from "@/lib/email";
 import { baseUrl } from "@/lib/url";
+import { createSignInLink } from "@/lib/magic-link";
 
 export type RequestAccessState = {
   status: "idle" | "sent" | "pending" | "rejected" | "error";
@@ -13,17 +13,7 @@ export type RequestAccessState = {
 };
 
 async function issueMagicLink(email: string) {
-  const raw = crypto.randomBytes(32).toString("hex");
-  const tokenHash = crypto.createHash("sha256").update(raw).digest("hex");
-  const expires = new Date(Date.now() + 15 * 60 * 1000);
-
-  // Invalidate any earlier outstanding links for this email first.
-  await prisma.verificationToken.deleteMany({ where: { email } });
-  await prisma.verificationToken.create({
-    data: { email, tokenHash, expires },
-  });
-
-  const verifyUrl = `${baseUrl()}/api/auth/verify?token=${raw}&email=${encodeURIComponent(email)}`;
+  const verifyUrl = await createSignInLink(email);
   await magicLinkEmail({ to: email, verifyUrl });
 }
 

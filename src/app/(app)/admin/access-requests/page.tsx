@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { approveUser, rejectUser } from "@/lib/actions/admin";
 import { ROLES, roleLabel } from "@/lib/roles";
+import { CopySignInLinkButton } from "./copy-sign-in-link-button";
 
 export default async function AccessRequestsPage() {
   await requireRole("ADMIN");
@@ -103,6 +104,7 @@ export default async function AccessRequestsPage() {
               <div className="min-w-0 flex-1">
                 <div className="text-sm text-ink">{u.email}</div>
               </div>
+              {u.status === "APPROVED" && <CopySignInLinkButton userId={u.id} />}
               <span
                 className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                   u.status === "APPROVED"
