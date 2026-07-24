@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# XW Social System
 
-## Getting Started
+Internal content review system for the Xperience Wave team. Next.js (App
+Router) + TypeScript + Tailwind + Prisma.
 
-First, run the development server:
+**Status: Phase 1** — sign-in (passwordless, admin-approved), roles, and the
+blog library (Google Doc based). Channel kits and the two review gates land
+in later phases.
+
+## Running locally
 
 ```bash
+npm install
+npx prisma migrate dev   # creates dev.db (SQLite) locally
+npx prisma db seed       # creates the admin user from ADMIN_EMAIL in .env
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit `http://localhost:3000`. Sign in with the email set as `ADMIN_EMAIL` in
+`.env` — since `RESEND_API_KEY` is blank by default, the magic sign-in link
+is printed to the terminal (look for `[email:dev]` in the output) instead of
+actually being emailed.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How access works
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+There's no public signup. A visitor enters their email on `/login`. That
+creates a pending request and (once `RESEND_API_KEY` is set) emails the
+admin. The admin approves it from **Manage Access**, choosing a role
+(Creator / Stakeholder / Admin). Once approved, that email can request a
+sign-in link any time from `/login` — it's a one-time link valid for 15
+minutes, not a password.
 
-## Learn More
+## Going live (Chrome-accessible, real accounts)
 
-To learn more about Next.js, take a look at the following resources:
+Three free accounts, none of which I can create on your behalf:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **[Neon](https://neon.tech)** — Postgres database. Create a project, copy
+   the connection string. Set it as `DATABASE_URL` (replaces the local
+   `file:./dev.db`) — no code change needed, `src/lib/prisma.ts` picks the
+   right driver automatically based on the URL.
+2. **[Resend](https://resend.com)** — sends the approval and sign-in emails.
+   Create an API key, set `RESEND_API_KEY`. To send to addresses other than
+   your own while testing, verify a sending domain (e.g. xperiencewave.com)
+   under Resend → Domains.
+3. **[Vercel](https://vercel.com)** — hosting. Import this repo (push it to
+   GitHub first, or run `vercel` from this folder) and set the environment
+   variables above plus `AUTH_SECRET` (`openssl rand -base64 32`), `AUTH_URL`
+   (your Vercel URL), and `ADMIN_EMAIL`/`ADMIN_NAME`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Once deployed, run `npx prisma migrate deploy` against the Postgres URL and
+`npx prisma db seed` once to create the admin user, same as local dev.
 
-## Deploy on Vercel
+## Environment variables (`.env`)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | SQLite locally (`file:./dev.db`), Postgres in prod |
+| `AUTH_SECRET` | Signs the session cookie — keep it secret, unique per env |
+| `AUTH_URL` | Base URL used in emailed links |
+| `RESEND_API_KEY` | Blank = emails print to the terminal instead of sending |
+| `EMAIL_FROM` | Sender shown on outgoing emails |
+| `ADMIN_EMAIL` / `ADMIN_NAME` | Seeded as the first approved Admin |

@@ -1,0 +1,68 @@
+// XW Social System — Prisma schema
+// Phase 1: auth (email + admin approval), roles, blogs.
+// Channel kits / assets / posts / schedule / reviews land in later phases.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- Auth ---
+//
+// Passwordless: a visitor requests access with just their email; an Admin
+// approves and assigns a role. Approved users sign in via emailed magic
+// links (VerificationToken below), verified against a signed session
+// cookie — see src/lib/session.ts. No NextAuth/Auth.js dependency.
+//
+// Role is one of: "CREATOR" | "STAKEHOLDER" | "ADMIN"
+// Status is one of: "PENDING" | "APPROVED" | "REJECTED"
+// Stored as String rather than a native Postgres enum, validated in code via
+// src/lib/roles.ts — keeps adding a role a one-line change, no migration.
+
+model User {
+  id    String @id @default(cuid())
+  email String @unique
+  name  String?
+
+  role   String @default("STAKEHOLDER")
+  status String @default("PENDING")
+
+  requestedAt DateTime  @default(now())
+  approvedAt  DateTime?
+  approvedBy  String?
+
+  notifyByEmail Boolean @default(false)
+
+  blogs Blog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// One-time magic-link tokens. tokenHash is sha256(rawToken); the raw token
+// only ever exists in the emailed URL, never stored at rest.
+model VerificationToken {
+  id        String   @id @default(cuid())
+  email     String
+  tokenHash String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+}
+
+// --- Content ---
+
+model Blog {
+  id         String   @id @default(cuid())
+  title      String
+  docUrl     String
+  sourceUrl  String?
+  notes      String?
+  uploadedAt DateTime @default(now())
+
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+  uploadedById String
+}
