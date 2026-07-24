@@ -37,7 +37,8 @@ model User {
 
   notifyByEmail Boolean @default(false)
 
-  blogs Blog[]
+  blogs   Blog[]
+  reviews Review[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -130,4 +131,21 @@ model Post {
 
   asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
   assetId String @unique
+}
+
+// Append-only decision record — never overwritten, full history is the
+// audit trail. Attached to either an Asset (Gate 1) or a Post (Gate 2).
+// targetType is "ASSET" | "POST"; decision is "APPROVED" | "CHANGES_REQUESTED".
+model Review {
+  id         String   @id @default(cuid())
+  targetType String
+  targetId   String
+  decision   String
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  reviewer   User   @relation(fields: [reviewerId], references: [id])
+  reviewerId String
+
+  @@index([targetType, targetId])
 }

@@ -3,11 +3,11 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/dal";
+import { requireRole } from "@/lib/dal";
 import { OWNERS, PLATFORMS, FORMATS_BY_PLATFORM } from "@/lib/owners";
 
 export async function createKit(formData: FormData) {
-  await requireUser();
+  await requireRole("CREATOR", "ADMIN");
   const blogId = String(formData.get("blogId") || "");
   if (!blogId) throw new Error("Missing blog id.");
 
@@ -23,7 +23,7 @@ export async function createKit(formData: FormData) {
 }
 
 export async function updateKitDoc(formData: FormData) {
-  await requireUser();
+  await requireRole("CREATOR", "ADMIN");
   const kitId = String(formData.get("kitId") || "");
   const docUrl = String(formData.get("docUrl") || "").trim();
   if (!kitId) throw new Error("Missing kit id.");
@@ -37,7 +37,7 @@ export async function updateKitDoc(formData: FormData) {
 }
 
 export async function deleteKit(formData: FormData) {
-  await requireUser();
+  await requireRole("CREATOR", "ADMIN");
   const kitId = String(formData.get("kitId") || "");
   const blogId = String(formData.get("blogId") || "");
   if (!kitId) throw new Error("Missing kit id.");
@@ -49,7 +49,7 @@ export async function deleteKit(formData: FormData) {
 }
 
 export async function addAsset(formData: FormData) {
-  await requireUser();
+  await requireRole("CREATOR", "ADMIN");
   const kitId = String(formData.get("kitId") || "");
   if (!kitId) throw new Error("Missing kit id.");
 
@@ -70,7 +70,7 @@ export async function addAsset(formData: FormData) {
 }
 
 export async function updateAsset(formData: FormData) {
-  await requireUser();
+  await requireRole("CREATOR", "ADMIN");
   const assetId = String(formData.get("assetId") || "");
   const kitId = String(formData.get("kitId") || "");
   if (!assetId) throw new Error("Missing asset id.");
@@ -95,7 +95,7 @@ export async function updateAsset(formData: FormData) {
 }
 
 export async function deleteAsset(formData: FormData) {
-  await requireUser();
+  await requireRole("CREATOR", "ADMIN");
   const assetId = String(formData.get("assetId") || "");
   const kitId = String(formData.get("kitId") || "");
   if (!assetId) throw new Error("Missing asset id.");
@@ -106,7 +106,7 @@ export async function deleteAsset(formData: FormData) {
 }
 
 export async function moveAsset(formData: FormData) {
-  await requireUser();
+  await requireRole("CREATOR", "ADMIN");
   const assetId = String(formData.get("assetId") || "");
   const kitId = String(formData.get("kitId") || "");
   const direction = String(formData.get("direction") || "");

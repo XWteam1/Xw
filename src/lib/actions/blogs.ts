@@ -3,10 +3,10 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/dal";
+import { requireRole } from "@/lib/dal";
 
 export async function createBlog(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireRole("CREATOR", "ADMIN");
 
   const title = String(formData.get("title") || "").trim();
   const docUrl = String(formData.get("docUrl") || "").trim();
@@ -32,7 +32,7 @@ export async function createBlog(formData: FormData) {
 }
 
 export async function deleteBlog(formData: FormData) {
-  await requireUser();
+  await requireRole("CREATOR", "ADMIN");
   const blogId = String(formData.get("blogId") || "");
   if (!blogId) throw new Error("Missing blog id.");
 

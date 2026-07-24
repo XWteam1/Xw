@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { gdocPreviewUrl } from "@/lib/gdoc";
@@ -10,30 +10,8 @@ import { statusLabel, statusClasses } from "@/lib/status";
 import { OwnerAvatar } from "@/components/owner-avatar";
 import { PlatformIcon } from "@/components/platform-icon";
 import { RemovePostButton } from "./remove-post-button";
-
-function FileThumb({ file }: { file: { url: string; type: string; name: string } }) {
-  if (file.type.startsWith("image/")) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={file.url} alt="" className="h-full w-full object-cover" />;
-  }
-  if (file.type.startsWith("video/")) {
-    return <video src={file.url} className="h-full w-full object-cover" muted />;
-  }
-  return (
-    <a
-      href={file.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex h-full w-full flex-col items-center justify-center gap-1 text-ink-faint hover:text-accent-ink"
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-6 w-6">
-        <path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
-        <path d="M14 3v5h5" />
-      </svg>
-      <span className="max-w-[90%] truncate text-[10px]">{file.name}</span>
-    </a>
-  );
-}
+import { PostFilesGallery } from "./post-files-gallery";
+import { reviewPost } from "@/lib/actions/reviews";
 
 const TABS = [
   { key: "doc", label: "Source Doc" },
@@ -48,10 +26,13 @@ export default async function BlogDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ tab?: string }>;
 }) {
-  await requireUser();
+  const user = await requireUser();
   const { id } = await params;
   const { tab: tabParam } = await searchParams;
   const tab = TABS.some((t) => t.key === tabParam) ? tabParam! : "doc";
+
+  const canEdit = user.role === "CREATOR" || user.role === "ADMIN";
+  const canReview = user.role === "STAKEHOLDER" || user.role === "ADMIN";
 
   const blog = await prisma.blog.findUnique({
     where: { id },
@@ -68,6 +49,20 @@ export default async function BlogDetailPage({
   const allAssets = blog.kits.flatMap((k) => k.assets);
   const postedAssets = allAssets.filter((a) => a.post);
   const unpostedAssets = allAssets.filter((a) => !a.post);
+
+  const postReviews =
+    postedAssets.length > 0
+      ? await prisma.review.findMany({
+          where: { targetType: "POST", targetId: { in: postedAssets.map((a) => a.post!.id) } },
+          include: { reviewer: true },
+          orderBy: { createdAt: "asc" },
+        })
+      : [];
+  const reviewsByPost = new Map<string, typeof postReviews>();
+  for (const r of postReviews) {
+    if (!reviewsByPost.has(r.targetId)) reviewsByPost.set(r.targetId, []);
+    reviewsByPost.get(r.targetId)!.push(r);
+  }
 
   return (
     <div className="px-7 py-6">
@@ -175,49 +170,25 @@ export default async function BlogDetailPage({
         </div>
       )}
 
-      {tab === "kits" && (
-        <div className="mt-5 max-w-xl">
-          <div className="mb-3 flex justify-end">
+      {tab === "kits" && blog.kits.length > 0 && redirect(`/kits/${blog.kits[0].id}`)}
+
+      {tab === "kits" && blog.kits.length === 0 && (
+        <div className="mt-5 flex max-w-xl flex-col items-center gap-3 rounded-xl border border-line bg-paper-raised px-4 py-14 text-center">
+          <p className="text-sm text-ink-faint">
+            {canEdit
+              ? "No channel kit yet for this blog — one kit per blog, one click to start it."
+              : "No channel kit yet for this blog."}
+          </p>
+          {canEdit && (
             <form action={createKit}>
               <input type="hidden" name="blogId" value={blog.id} />
               <button
                 type="submit"
-                className="rounded-md border border-line-strong bg-paper-raised px-2.5 py-1.5 text-xs font-semibold text-ink transition hover:border-ink-faint"
+                className="rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-strong"
               >
-                + New kit
+                Create channel kit
               </button>
             </form>
-          </div>
-
-          {blog.kits.length === 0 ? (
-            <div className="rounded-xl border border-line bg-paper-raised px-4 py-10 text-center text-sm text-ink-faint">
-              No kits yet for this blog.
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2.5">
-              {blog.kits.map((kit) => {
-                const approved = kit.assets.filter((a) => a.status === "APPROVED").length;
-                return (
-                  <Link
-                    key={kit.id}
-                    href={`/kits/${kit.id}`}
-                    className="block rounded-xl border border-line bg-paper-raised p-3.5 transition hover:border-ink-faint"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="text-sm font-semibold text-ink">{kit.title}</div>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusClasses(kit.status)}`}
-                      >
-                        {statusLabel(kit.status)}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-xs text-ink-faint">
-                      {approved} of {kit.assets.length} asset{kit.assets.length === 1 ? "" : "s"} approved
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
           )}
         </div>
       )}
@@ -236,13 +207,7 @@ export default async function BlogDetailPage({
                 return (
                   <div key={post.id} className="overflow-hidden rounded-xl border border-line bg-paper-raised">
                     {files.length > 0 ? (
-                      <div className={`grid h-36 gap-0.5 bg-paper-sunken ${files.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
-                        {files.slice(0, 4).map((f, i) => (
-                          <div key={i} className="overflow-hidden bg-paper-sunken">
-                            <FileThumb file={f} />
-                          </div>
-                        ))}
-                      </div>
+                      <PostFilesGallery files={files} />
                     ) : (
                       <div className="flex h-36 items-center justify-center bg-paper-sunken text-xs text-ink-faint">
                         No files
@@ -271,8 +236,47 @@ export default async function BlogDetailPage({
                             ? post.scheduledDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                             : "Not scheduled"}
                         </span>
-                        <RemovePostButton postId={post.id} blogId={blog.id} />
+                        {canEdit && <RemovePostButton postId={post.id} blogId={blog.id} />}
                       </div>
+
+                      {(() => {
+                        const reviews = reviewsByPost.get(post.id) ?? [];
+                        const reviewable = canReview && (post.status === "DRAFT" || post.status === "CHANGES_REQUESTED");
+                        if (reviews.length === 0 && !reviewable) return null;
+                        return (
+                          <div className="-mx-3.5 -mb-3.5 mt-1 border-t border-line bg-paper-sunken px-3.5 py-2.5">
+                            {reviews.map((r) => (
+                              <div key={r.id} className="py-1 text-xs">
+                                <span className="font-semibold text-ink">{r.reviewer.name || r.reviewer.email}</span>{" "}
+                                <span className={r.decision === "APPROVED" ? "text-ok" : "text-bad"}>
+                                  {r.decision === "APPROVED" ? "approved" : "requested changes"}
+                                </span>
+                                {r.comment && <p className="mt-0.5 text-ink-soft">{r.comment}</p>}
+                              </div>
+                            ))}
+                            {reviewable && (
+                              <form action={reviewPost} className="mt-1.5 flex flex-col gap-1.5">
+                                <input type="hidden" name="postId" value={post.id} />
+                                <input type="hidden" name="blogId" value={blog.id} />
+                                <textarea
+                                  name="comment"
+                                  placeholder="Comment (required if requesting changes)"
+                                  rows={2}
+                                  className="rounded-lg border border-line-strong bg-paper px-2.5 py-1.5 text-xs text-ink"
+                                />
+                                <div className="flex justify-end gap-1.5">
+                                  <button type="submit" name="decision" value="CHANGES_REQUESTED" className="rounded-md border border-bad/40 px-2.5 py-1 text-[11px] font-semibold text-bad hover:bg-bad-soft">
+                                    Request changes
+                                  </button>
+                                  <button type="submit" name="decision" value="APPROVED" className="rounded-md bg-ok px-2.5 py-1 text-[11px] font-semibold text-white hover:brightness-105">
+                                    Approve
+                                  </button>
+                                </div>
+                              </form>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 );
@@ -280,7 +284,7 @@ export default async function BlogDetailPage({
             </div>
           )}
 
-          {unpostedAssets.length > 0 && (
+          {canEdit && unpostedAssets.length > 0 && (
             <div className="mt-5 rounded-xl border border-line bg-paper-raised p-4">
               <h3 className="mb-3 text-sm font-semibold text-ink">Add a post</h3>
               <form action={createPost} className="flex flex-col gap-3">

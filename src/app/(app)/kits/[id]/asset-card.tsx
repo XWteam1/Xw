@@ -21,12 +21,14 @@ export function AssetCard({
   isFirst,
   isLast,
   locked,
+  canEdit,
 }: {
   asset: AssetData;
   kitId: string;
   isFirst: boolean;
   isLast: boolean;
   locked: boolean;
+  canEdit: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [platform, setPlatform] = useState(asset.platform);
@@ -90,37 +92,39 @@ export function AssetCard({
         </form>
       )}
 
-      <div className="ml-auto flex items-center gap-1">
-        <form action={moveAsset}>
-          <input type="hidden" name="assetId" value={asset.id} />
-          <input type="hidden" name="kitId" value={kitId} />
-          <input type="hidden" name="direction" value="up" />
-          <button type="submit" disabled={isFirst} className="flex h-6 w-6 items-center justify-center rounded border border-line-strong text-ink-soft disabled:opacity-30">↑</button>
-        </form>
-        <form action={moveAsset}>
-          <input type="hidden" name="assetId" value={asset.id} />
-          <input type="hidden" name="kitId" value={kitId} />
-          <input type="hidden" name="direction" value="down" />
-          <button type="submit" disabled={isLast} className="flex h-6 w-6 items-center justify-center rounded border border-line-strong text-ink-soft disabled:opacity-30">↓</button>
-        </form>
-        {!editing && !locked && (
-          <>
-            <button type="button" onClick={() => setEditing(true)} className="rounded-md border border-line-strong px-2.5 py-1 text-xs font-semibold text-ink hover:border-ink-faint">
-              Edit
-            </button>
-            <form
-              action={deleteAsset}
-              onSubmit={(e) => {
-                if (!confirm("Delete this asset?")) e.preventDefault();
-              }}
-            >
-              <input type="hidden" name="assetId" value={asset.id} />
-              <input type="hidden" name="kitId" value={kitId} />
-              <button type="submit" className="flex h-6 w-6 items-center justify-center rounded text-ink-faint hover:bg-bad-soft hover:text-bad">✕</button>
-            </form>
-          </>
-        )}
-      </div>
+      {canEdit && (
+        <div className="ml-auto flex items-center gap-1">
+          <form action={moveAsset}>
+            <input type="hidden" name="assetId" value={asset.id} />
+            <input type="hidden" name="kitId" value={kitId} />
+            <input type="hidden" name="direction" value="up" />
+            <button type="submit" disabled={isFirst} className="flex h-6 w-6 items-center justify-center rounded border border-line-strong text-ink-soft disabled:opacity-30">↑</button>
+          </form>
+          <form action={moveAsset}>
+            <input type="hidden" name="assetId" value={asset.id} />
+            <input type="hidden" name="kitId" value={kitId} />
+            <input type="hidden" name="direction" value="down" />
+            <button type="submit" disabled={isLast} className="flex h-6 w-6 items-center justify-center rounded border border-line-strong text-ink-soft disabled:opacity-30">↓</button>
+          </form>
+          {!editing && !locked && (
+            <>
+              <button type="button" onClick={() => setEditing(true)} className="rounded-md border border-line-strong px-2.5 py-1 text-xs font-semibold text-ink hover:border-ink-faint">
+                Edit
+              </button>
+              <form
+                action={deleteAsset}
+                onSubmit={(e) => {
+                  if (!confirm("Delete this asset?")) e.preventDefault();
+                }}
+              >
+                <input type="hidden" name="assetId" value={asset.id} />
+                <input type="hidden" name="kitId" value={kitId} />
+                <button type="submit" className="flex h-6 w-6 items-center justify-center rounded text-ink-faint hover:bg-bad-soft hover:text-bad">✕</button>
+              </form>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

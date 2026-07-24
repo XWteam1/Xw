@@ -1,8 +1,8 @@
-import { requireUser } from "@/lib/dal";
+import { requireRole } from "@/lib/dal";
 import { createBlog } from "@/lib/actions/blogs";
 
 export default async function NewBlogPage() {
-  await requireUser();
+  await requireRole("CREATOR", "ADMIN");
 
   return (
     <div className="mx-auto max-w-lg px-7 py-6">

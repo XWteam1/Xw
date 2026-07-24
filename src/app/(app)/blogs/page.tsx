@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { DeleteBlogButton } from "./delete-blog-button";
 
 export default async function BlogsPage() {
-  await requireUser();
+  const user = await requireUser();
+  const canEdit = user.role === "CREATOR" || user.role === "ADMIN";
   const blogs = await prisma.blog.findMany({
     orderBy: { uploadedAt: "desc" },
     include: { uploadedBy: true },
@@ -19,12 +20,14 @@ export default async function BlogsPage() {
             Source docs the content team drafts from.
           </p>
         </div>
-        <Link
-          href="/blogs/new"
-          className="rounded-lg bg-accent px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong"
-        >
-          + Add blog
-        </Link>
+        {canEdit && (
+          <Link
+            href="/blogs/new"
+            className="rounded-lg bg-accent px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong"
+          >
+            + Add blog
+          </Link>
+        )}
       </div>
 
       <div className="mt-5 overflow-hidden rounded-xl border border-line bg-paper-raised">
@@ -60,7 +63,7 @@ export default async function BlogsPage() {
               <span className="rounded-full border border-line-strong bg-paper-sunken px-2.5 py-1 text-xs font-semibold text-ink-soft">
                 Google Doc
               </span>
-              <DeleteBlogButton blogId={blog.id} title={blog.title} />
+              {canEdit && <DeleteBlogButton blogId={blog.id} title={blog.title} />}
             </div>
           ))
         )}

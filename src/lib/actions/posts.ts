@@ -3,12 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { put } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/dal";
+import { requireRole } from "@/lib/dal";
 
 export type PostFile = { url: string; type: string; name: string };
 
 export async function createPost(formData: FormData) {
-  await requireUser();
+  await requireRole("CREATOR", "ADMIN");
   const assetId = String(formData.get("assetId") || "");
   const blogId = String(formData.get("blogId") || "");
   const finalCopy = String(formData.get("finalCopy") || "").trim();
@@ -51,7 +51,7 @@ export async function createPost(formData: FormData) {
 }
 
 export async function deletePost(formData: FormData) {
-  await requireUser();
+  await requireRole("CREATOR", "ADMIN");
   const postId = String(formData.get("postId") || "");
   const blogId = String(formData.get("blogId") || "");
   if (!postId) throw new Error("Missing post id.");
